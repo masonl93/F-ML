@@ -1,3 +1,4 @@
+import matplotlib.pyplot as mpl
 '''
 TODO:
 - Ch.2: bar imbalances
@@ -21,6 +22,7 @@ import multiprocessing as mp
 from pathlib import PurePath, Path
 import pyarrow
 import scipy.stats as stats
+from scipy.stats import rv_continuous, kstest
 import sys
 import time
 
@@ -30,9 +32,8 @@ from sklearn.tree import DecisionTreeClassifier
 from sklearn.ensemble import BaggingClassifier
 # from mpEngine import mpPandasObj
 from sklearn.metrics import log_loss, accuracy_score
-from sklearn.model_selection import GridSearchCV
+from sklearn.model_selection import GridSearchCV, RandomizedSearchCV
 from sklearn.pipeline import Pipeline
-
 
 
 # 2.4
@@ -637,20 +638,35 @@ def plotFeatImportance(pathOut, imp, oob, oos, method, tag=0, simNum=0, **kargs)
     return
 
 
-# 9.1
+# 9.2
+class MyPipeline(Pipeline):
+    def fit(self, X, y, sample_weight=None, **fit_params):
+        if sample_weight is not None:
+            fit_params[self.steps[-1][0]+'__sample_weight'] = sample_weight
+        # return super(MyPipeline, self).fit(X, y, **fit_params)
+        return super().fit(X, y, **fit_params)
+
+
+# 9.3
 def clfHyperFit(feat, lbl, t1, pipe_clf, param_grid, cv=3, bagging=[0, None, 1.],
-                n_jobs=-1, pctEmbargo=0, **fit_params):
-    if set(lbl.values) == {0, 1}:
-        scoring = 'f1'  # f1 for meta-labeling
-    else:
-        scoring = 'neg_log_loss'  # symmetric towards all cases
+                rndSearchIter=0, n_jobs=-1, pctEmbargo=0, scoring=None, **fit_params):
+    if scoring is None:
+        if set(lbl.values) == {0, 1}:
+            scoring = 'f1'  # f1 for meta-labeling
+        else:
+            scoring = 'neg_log_loss'  # symmetric towards all cases
     # 1) hyperparameter search, on train data
     inner_cv = PurgedKFold(n_splits=cv, t1=t1, pctEmbargo=pctEmbargo)  # purged
-    gs = GridSearchCV(estimator=pipe_clf, param_grid=param_grid,
-                      scoring=scoring, cv=inner_cv, n_jobs=n_jobs, iid=False)
+    if rndSearchIter == 0:
+        gs = GridSearchCV(estimator=pipe_clf, param_grid=param_grid,
+                          scoring=scoring, cv=inner_cv, n_jobs=n_jobs, iid=False)
+    else:
+        gs = RandomizedSearchCV(estimator=pipe_clf, param_distributions=param_grid, scoring=scoring, cv=inner_cv, n_jobs=n_jobs,
+                                iid=False, n_iter=rndSearchIter)
     gs = gs.fit(feat, lbl, **fit_params).best_estimator_  # pipeline
     # 2) fit validated model on the entirety of the data
-    if bagging[1] > 0:
+    # mlevy edit: changing bagging[1] to bagging[0], since can't comapre None and int
+    if bagging[0] > 0:
         gs = BaggingClassifier(base_estimator=MyPipeline(gs.steps),
                                n_estimators=int(bagging[0]), max_samples=float(bagging[1]),
                                max_features=float(bagging[2]), n_jobs=n_jobs)
@@ -660,12 +676,86 @@ def clfHyperFit(feat, lbl, t1, pipe_clf, param_grid, cv=3, bagging=[0, None, 1.]
     return gs
 
 
-# 9.2
-class MyPipeline(Pipeline):
-    def fit(self, X, y, sample_weight=None, **fit_params):
-        if sample_weight is not None:
-            fit_params[self.steps[-1][0]+'__sample_weight'] = sample_weight
-        return super(MyPipeline, self).fit(X, y, **fit_params)
+# 9.4
+class logUniform_gen(rv_continuous):
+    # random numbers log-uniformly distributed between 1 and e
+    def _cdf(self, x):
+        return np.log(x/self.a)/np.log(self.b/self.a)
+
+
+# 9.4 cont.
+def logUniform(a=1, b=np.exp(1)):
+    ''' Example Usage:
+    a,b,size=1E-3,1E3,10000
+    vals=logUniform(a=a,b=b).rvs(size=size)
+    print(kstest(rvs=np.log(vals),cdf='uniform',args=(np.log(a),np.log(b/a)),N=size))
+    print(pd.Series(vals).describe())
+    plt.subplot(121)
+    pd.Series(np.log(vals)).hist()
+    plt.subplot(122)
+    pd.Series(vals).hist()
+    plt.show()
+    '''
+    return logUniform_gen(a=a, b=b, name='logUniform')
+
+
+# 10.1
+def getSignal(events, stepSize, prob, pred, numClasses, numThreads, **kargs):
+    # get signals from predictions
+    if prob.shape[0] == 0:
+        return pd.Series()
+    # 1) generate signals from multinomial classification (one-vs-rest, OvR)
+    signal0 = (prob-1./numClasses)/(prob*(1.-prob))**.5  # t-value of OvR
+    signal0 = pred*(2*stats.norm.cdf(signal0)-1)  # signal=side*size
+    if 'side' in events:
+        signal0 *= events.loc[signal0.index, 'side']  # meta-labeling
+    # 2) compute average signal among those concurrently open
+    df0 = signal0.to_frame('signal').join(events[['t1']], how='left')
+    df0 = avgActiveSignals(df0, numThreads)
+    signal1 = discreteSignal(signal0=df0, stepSize=stepSize)
+    return signal1
+
+
+# 10.2
+def avgActiveSignals(signals, numThreads):
+    # compute the average signal among those active
+    # 1) time points where signals change (either one starts or one ends)
+    tPnts = set(signals['t1'].dropna().values)
+    tPnts = tPnts.union(signals.index.values)
+    tPnts = list(tPnts)
+    tPnts.sort()
+    out = mpPandasObj(mpAvgActiveSignals, ('molecule', tPnts),
+                      numThreads, signals=signals)
+    return out
+
+
+# 10.2 cont.
+def mpAvgActiveSignals(signals, molecule):
+    '''
+    At time loc, average signal among those still active.
+    Signal is active if:
+    a) issued before or at loc AND
+    b) loc before signal's endtime, or endtime is still unknown (NaT).
+    '''
+    out = pd.Series()
+    for loc in molecule:
+        df0 = (signals.index.values <= loc) & (
+            (loc < signals['t1']) | pd.isnull(signals['t1']))
+        act = signals[df0].index
+        if len(act) > 0:
+            out[loc] = signals.loc[act, 'signal'].mean()
+        else:
+            out[loc] = 0  # no signals active at this time
+    return out
+
+
+# 10.3
+def discreteSignal(signal0, stepSize):
+    # discretize signal
+    signal1 = (signal0/stepSize).round()*stepSize  # discretize
+    signal1[signal1 > 1] = 1  # cap
+    signal1[signal1 < -1] = -1  # floor
+    return signal1
 
 
 # 20.5
