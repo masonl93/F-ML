@@ -758,6 +758,37 @@ def discreteSignal(signal0, stepSize):
     return signal1
 
 
+# 10.4
+def betSize(w, x):
+    return x*(w+x**2)**-.5
+
+
+# 10.4 cont.
+def getTPos(w, f, mP, maxPos):
+    return int(betSize(w, f-mP)*maxPos)
+
+
+# 10.4 cont.
+def invPrice(f, w, m):
+    return f-m*(w/(1-m**2))**.5
+
+
+# 10.4 cont.
+def limitPrice(tPos, pos, f, w, maxPos):
+    sgn = (1 if tPos >= pos else -1)
+    lP = 0
+    for j in range(abs(pos+sgn), abs(tPos+1)):
+        lP += invPrice(f, w, j/float(maxPos))
+    lP /= tPos-pos
+    return lP
+
+
+# 10.4 cont.
+def getW(x, m):
+    # 0<alpha<1
+    return x**2*(m**-2-1)
+
+
 # 20.5
 def linParts(numAtoms, numThreads):
     # partition of atoms with a single loop

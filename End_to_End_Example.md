@@ -1,0 +1,4 @@
+1) Data curation: Pull in sp500 daily prices and run moving avg strategy (Don’t need to worry about tick data when using a MA daily trading strategy). Or use tick data on some security if can get a good example (maybe IVE free data?). Worst case, create artifical (random walk) data to demonstrate with.
+2) Use meta labeling, sample weights, and fractionally diff. features
+3) Run random forest (or other enemble methods) on data, properly doing cross validation, hyper-param tuning, and examining feature importance.
+4) Back test the strategy. If using SP500 daily MA strategy, compare against sp500 normal performance in addition to sp500 trend following strategy (difference is ML decides to take the bet or not).
