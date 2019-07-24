@@ -1,3 +1,7 @@
-data/IVE_tickbidask.csv
 __pycache__/*
 .ipynb_checkpoints/*
+advances_in_financial_machine_learning.pdf
+full_example.md
+env*
+todo.txt
+*data/*
