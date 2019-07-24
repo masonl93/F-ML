@@ -1,10 +1,12 @@
-# F-ML-Data-Structuring
-- [F-ML-Data-Structuring](#F-ML-Data-Structuring)
-  - [Data](#Data)
-  - [Bars](#Bars)
+# Financial Machine Learning 
+- [Financial Machine Learning](#financial-machine-learning)
+  - [Data Analysis](#data-analysis)
+    - [Data](#data)
+    - [Bars](#bars)
 
+## Data Analysis
 
-## Data
+### Data
 Sites that offer free tick data:  
 - [Kibot](http://www.kibot.com/free_historical_data.aspx)
   - Offers tick data from 2009 to present for $IVE and $WDC
@@ -13,7 +15,7 @@ Sites that offer free tick data:
   - need a script to automate downloading all since it's separated by year and month
   - Also CSV looks to only have bid/ask, not actually tick price? Also no volume data either
 
-## Bars
+### Bars
 - TODO: make this all more clear
 - Time bars: should avoid: pg 26
 - Tick bars: exhibit desirable properties: may have Gaussian distrib (pg 27)
