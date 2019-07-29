@@ -12,6 +12,8 @@ def load_ticks_CSV(fp):
 
     Returns:
         DataFrame --
+
+    # TODO: Allow collumns to be specified i.e. for a csv not from Kibot
     """
     cols = list(
         map(str.lower, ['Date', 'Time', 'Price', 'Bid', 'Ask', 'Volume']))
@@ -53,23 +55,25 @@ def get_tick_bars(df, tick_threshold):
     return df[::tick_threshold]
 
 def get_volume_bars(df, volume_threshold):
+    # TODO: Allow volume column name to be specified
     idxs = []
     vol_counter = 0
-    # for i, j in enumerate(df['self.volume_col'])
+    # for i, j in enumerate(df[volume_col])
     for idx, vol in enumerate(df['volume']):
         vol_counter += vol
-        if vol >= volume_threshold:
+        if vol_counter >= volume_threshold:
             idxs.append(idx)
             vol_counter = 0
     return df.iloc[idxs].drop_duplicates()
 
 def get_dollar_bars(df, dollar_threshold):
+    # TODO: Allow dollar column name to be specified
     idxs = []
     dol_counter = 0
-    # for i, j in enumerate(df['self.volume_col'])
+    # for i, j in enumerate(df[dollar_col])
     for idx, dol in enumerate(df['dollar_volume']):
         dol_counter += dol
-        if dol >= dollar_threshold:
+        if dol_counter >= dollar_threshold:
             idxs.append(idx)
             dol_counter = 0
     return df.iloc[idxs].drop_duplicates()
@@ -78,11 +82,3 @@ def get_dollar_bars(df, dollar_threshold):
 def get_tick_imbalance_bars(df, exp_tick_imbal=100):
     raise NotImplementedError('To be implemented')
 
-
-'''
-TODO:
-- Allow collumns to be specified i.e. for a csv not from Kibot
-- set class variables for volume, dollar volume column names
-  so they can be used in get_dollar_bars and get_volume_bars instead of
-  hard-coded
-'''

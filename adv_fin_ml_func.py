@@ -86,7 +86,7 @@ def applyPtSlOnT1(close, events, ptSl, molecule):
 # 3.6
 def getEvents(close, tEvents, ptSl, trgt, minRet, numThreads, t1=False, side=None):
     # 1) get target
-    trgt = trgt.loc[tEvents]
+    trgt = trgt.reindex(tEvents)
     trgt = trgt[trgt > minRet]  # minRet
     # 2) get t1 (max holding period)
     if t1 is False:
