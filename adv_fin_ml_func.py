@@ -2,9 +2,13 @@
 Functions from Lopez de Prado's 'Advances in Financial Machine Learning'
 
 Number above the functions refer to the book's code snippet.
-Various modifications have been made.
-For example, some functions have been changed as part of certain chapter's
-exercises. In addition, lots of code has been modified to work with Python 3
+
+Various modifications have been made:
+    - Some functions have been enhanced as part of certain chapter's
+      exercises
+    - Python 3 compatibility
+    - Fixing pandas, etc warnings/errors
+    - Cleaner formatting
 '''
 
 import datetime as dt
@@ -32,13 +36,12 @@ from sklearn.pipeline import Pipeline
 from sklearn.tree import DecisionTreeClassifier
 
 
-
 # 2.4
 def getTEvents(gRaw, h):
     tEvents, sPos, sNeg = [], 0, 0
     diff = gRaw.diff()
     for i in diff.index[1:]:
-        sPos, sNeg = max(0, sPos + + diff.loc[i]), min(0, sNeg + diff.loc[i])
+        sPos, sNeg = max(0, sPos+diff.loc[i]), min(0, sNeg+diff.loc[i])
         if sNeg < -h:
             sNeg = 0
             tEvents.append(i)
