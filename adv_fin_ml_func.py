@@ -98,7 +98,7 @@ def getEvents(close, tEvents, ptSl, trgt, minRet, numThreads, t1=False, side=Non
     if side is None:
         side_, ptSl_ = pd.Series(1., index=trgt.index), [ptSl[0], ptSl[0]]
     else:
-        side_, ptSl_ = side.loc[trgt.index], ptSl[:2]
+        side_, ptSl_ = side.reindex(trgt.index), ptSl[:2]
     events = (pd.concat({'t1': t1, 'trgt': trgt,
                          'side': side_}, axis=1).dropna(subset=['trgt']))
     df0 = mpPandasObj(func=applyPtSlOnT1, pdObj=('molecule', events.index),
