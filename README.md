@@ -3,6 +3,7 @@
   - [Data Analysis](#data-analysis)
     - [Data](#data)
     - [Bars](#bars)
+  - [Notes](#notes)
 
 ## Data Analysis
 
@@ -21,3 +22,7 @@ Sites that offer free tick data:
 - Tick bars: exhibit desirable properties: may have Gaussian distrib (pg 27)
 - Volume bars: ticks are arbitrary, vol even closer to IID Gaussian than tick. Lots of market microstructures revolve around price & volume
 - Dollar bars: Variation of number of bars is much less when looking at market value exchanged. Number of shares also change multiple times of a security's life time.
+
+
+## Notes
+When going through Jupyter notebooks, please be aware that there is most likely some mistakes I have made. My Python skills are above average so I have been able to improve de Prado's code in some ways. My financial knowledge is around average as I am still learning lots. My math skills on the other hand are below average so there might be some mistakes regarding this.  

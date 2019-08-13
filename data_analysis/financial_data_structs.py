@@ -19,9 +19,9 @@ def load_ticks_CSV(fp):
         map(str.lower, ['Date', 'Time', 'Price', 'Bid', 'Ask', 'Volume']))
     df = (pd.read_csv(fp, header=None)
             .rename(columns=dict(zip(range(len(cols)), cols)))
-            .assign(timestamp=lambda df: (pd.to_datetime(df['date']+df['time'],
+            .assign(timestamp=lambda df: (pd.to_datetime(df['date'] + df['time'],
                                                          format='%m/%d/%Y%H:%M:%S')))
-            .assign(dollar_volume=lambda df: df['price']*df['volume'])
+            .assign(dollar_volume=lambda df: df['price'] * df['volume'])
             .drop(['date', 'time'], axis=1)
             .set_index('timestamp')
             .drop_duplicates())
@@ -44,7 +44,7 @@ def remove_outliers(df):
     Returns:
         DataFrame -- dataframe with outliers removed
     """
-    return df[np.abs(df.price-df.price.mean()) <= (3*df.price.std())]
+    return df[np.abs(df.price - df.price.mean()) <= (3 * df.price.std())]
 
 
 def df_to_parquet(df, out_fp):
@@ -116,3 +116,41 @@ class MovingAvgCross():
         # Check if this is first time crossing
         first_cross = self.ma_df.ma_s.shift(1) > self.ma_df.ma_l.shift(1)
         return self.ma_df.ma_s[cross & first_cross]
+
+
+class BollingerBands():
+    """ Bollinger Bands
+
+    Arguments:
+        price_series {pandas.Series} -- index is time series with prices as values
+        window {int} -- moving average window
+        num_std {int} -- standard deviations of the bollinger bands
+    """
+
+    def __init__(self, price_series, window, num_std):
+        self.price_series = price_series
+        self.window = window
+        self.num_std = num_std
+        self.bol_df = pd.DataFrame().assign(price=price_series).assign(
+            ma=price_series.rolling(window=window).mean())
+        std = price_series.rolling(window=window).std(ddof=0)
+        self.bol_df['high'] = self.bol_df.ma + num_std * std
+        self.bol_df['low'] = self.bol_df.ma - num_std * std
+
+    def buy_signal(self):
+        """ Price series crosses bottom band
+            Predicting mean reversion
+        """
+        cross = self.bol_df.price < self.bol_df.low
+        # Check if this is first time crossing
+        first_cross = self.bol_df.price.shift(1) > self.bol_df.low.shift(1)
+        return self.bol_df.price[cross & first_cross]
+
+    def sell_signal(self):
+        """ Price series crosses top band
+            Predicting mean reversion
+        """
+        cross = self.bol_df.price > self.bol_df.high
+        # Check if this is first time crossing
+        first_cross = self.bol_df.price.shift(1) < self.bol_df.high.shift(1)
+        return self.bol_df.price[cross & first_cross]
