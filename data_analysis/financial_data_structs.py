@@ -89,6 +89,11 @@ def get_tick_imbalance_bars(df, exp_tick_imbal=100):
     raise NotImplementedError('To be implemented')
 
 
+def calc_returns(s):
+    rets = np.diff(np.log(s))
+    return (pd.Series(rets, index=s.index[1:]))
+
+
 class MovingAvgCross():
     """ Moving Average Cross
 
